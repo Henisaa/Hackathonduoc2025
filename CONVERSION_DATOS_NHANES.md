@@ -42,7 +42,7 @@ Para cada ciclo, descarga los siguientes módulos:
 └── QUEST_2007_2008.XPT
 
 # Ejecuta el script simple:
-python3 convertir_nhanes.py
+python convertir_nhanes.py
 ```
 
 **Opción B - Usar Python directamente:**
@@ -165,3 +165,4 @@ for csv_file in csv_files:
 ---
 
 **Última actualización**: Noviembre 2025
+

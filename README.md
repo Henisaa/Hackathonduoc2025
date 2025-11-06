@@ -190,14 +190,6 @@ MIT License
 
 ---
 
-## 🆘 Solución de Problemas Comunes
-
-### Error: `XGBoost Library (libxgboost.dylib) could not be loaded` (macOS)
-**Solución**: Instala la librería OpenMP usando Homebrew.
-```bash
-brew install libomp
-```
-
 **¡ÉXITO EN EL HACKATHON! 🚀**
 
 *Última actualización: Noviembre 2025*
