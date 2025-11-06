@@ -1,3 +1,3 @@
 import pandas as pd
-df = pd.read_csv("./data/LAB_2017_2018.csv")
-print(df.columns[:20])
+print(pd.read_csv("X_train.csv").shape)
+print(pd.read_csv("X_test.csv").shape)

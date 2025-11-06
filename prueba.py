@@ -151,18 +151,21 @@ def create_diabetes_label(df):
     a1c_col = 'LAB_LBXGH'
     glucose_col = 'LAB_LBXGLU'
     df['label_diabetes'] = 0
+
+    # Crear etiquetas según glucosa y HbA1c
     if a1c_col in df.columns:
         mask_a1c = df[a1c_col].notna() & (df[a1c_col] >= 6.0)
-        df.loc[mask_a1c,'label_diabetes']=1
+        df.loc[mask_a1c, 'label_diabetes'] = 1
+
     if glucose_col in df.columns:
         mask_glu = df[glucose_col].notna() & (df[glucose_col] >= 110)
-        df.loc[mask_glu,'label_diabetes']=1
-    lab_cols = [c for c in [a1c_col,glucose_col] if c in df.columns]
-    if lab_cols:
-        df = df[df[lab_cols].notna().any(axis=1)]
-        prevalence = df['label_diabetes'].mean()
-        print(f"✅ Label Diabetes ({len(df):,}, prev. {prevalence:.1%})")
+        df.loc[mask_glu, 'label_diabetes'] = 1
+
+    # ✅ Mantener todos los registros (sin eliminar filas sin laboratorio)
+    prevalence = df['label_diabetes'].mean()
+    print(f"✅ Label Diabetes ({len(df):,} registros, prevalencia {prevalence:.1%})")
     return df
+
 
 def create_hypertension_label(df):
     df = df.copy()
