@@ -25,13 +25,13 @@ venv\Scripts\activate
 ### 3. Instalar dependencias
 
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 4. Verificar que todo funciona
 
 ```bash
-python test_entorno.py
+python3 test_entorno.py
 ```
 
 ### 5. Obtener datos
@@ -40,7 +40,7 @@ python test_entorno.py
 
 ```bash
 # Intentar descarga automática
-python descargar_nhanes.py --cycle 2017-2018 --module DEMO
+python3 descargar_nhanes.py --cycle 2017-2018 --module DEMO
 
 # O descargar múltiples módulos
 python descargar_nhanes.py --cycle 2017-2018 --module DEMO EXAM LAB
@@ -58,13 +58,13 @@ python descargar_nhanes.py --cycle 2017-2018 --module DEMO EXAM LAB
 ### 6. Convertir a CSV
 
 ```bash
-python convertir_nhanes.py
+python3 convertir_nhanes.py
 ```
 
 ### 7. Probar con datos
 
 ```bash
-python test_datos.py
+python3 test_datos.py
 ```
 
 ### 8. Abrir notebook guía
