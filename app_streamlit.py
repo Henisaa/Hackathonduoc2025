@@ -5,6 +5,10 @@ from fpdf import FPDF
 import base64
 import pandas as pd
 
+
+#para ejecutar, correr en el terminal: streamlit run app_streamlit.py
+
+
 # Configuración de página
 st.set_page_config(
     page_title="Coach de Bienestar Preventivo",
@@ -21,52 +25,86 @@ st.markdown("""
 Este sistema estima tu riesgo cardiometabólico y genera un plan personalizado.
 
 **⚠️ DISCLAIMER:** Este NO es un diagnóstico médico. Consulta con un profesional de salud.
-""")
+""".strip())
 
 # Sidebar para formulario
 with st.sidebar:
     st.header("📋 Tu Perfil")
+    
+    # Pestañas para dos métodos de entrada
+    input_method = st.radio("Método de Entrada:", ("Formulario Manual", "Descripción con Texto"))
+    
+    user_data = {}
+    evaluate_button = False
+    
+    if input_method == "Formulario Manual":
+        with st.form("manual_form"):
+            # Datos demográficos
+            st.subheader("Demográfico")
+            age = st.number_input("Edad", min_value=18, max_value=85, value=45)
+            sex = st.selectbox("Sexo", ["M", "F"], format_func=lambda x: "Masculino" if x == "M" else "Femenino")
 
-    # Datos demográficos
-    st.subheader("Demográfico")
-    age = st.number_input("Edad", min_value=18, max_value=85, value=45)
-    sex = st.selectbox("Sexo", ["M", "F"], format_func=lambda x: "Masculino" if x == "M" else "Femenino")
+            # Antropometría
+            st.subheader("Antropometría")
+            height_cm = st.number_input("Altura (cm)", min_value=120, max_value=220, value=170)
+            weight_kg = st.number_input("Peso (kg)", min_value=30, max_value=220, value=75)
+            waist_cm = st.number_input("Cintura (cm)", min_value=40, max_value=170, value=90)
 
-    # Antropometría
-    st.subheader("Antropometría")
-    height_cm = st.number_input("Altura (cm)", min_value=120, max_value=220, value=170)
-    weight_kg = st.number_input("Peso (kg)", min_value=30, max_value=220, value=75)
-    waist_cm = st.number_input("Cintura (cm)", min_value=40, max_value=170, value=90)
+            # Calcular IMC
+            bmi = weight_kg / ((height_cm / 100) ** 2)
+            st.info(f"IMC: {bmi:.1f}")
 
-    # Calcular IMC
-    bmi = weight_kg / ((height_cm / 100) ** 2)
-    st.info(f"IMC: {bmi:.1f}")
+            # Estilo de vida
+            st.subheader("Estilo de Vida (Opcional)")
+            sleep_hours = st.slider("Horas de sueño/día", 3, 12, 7)
+            smokes_cig_day = st.number_input("Cigarrillos/día", min_value=0, max_value=60, value=0)
+            days_mvpa_week = st.slider("Días de ejercicio/semana", 0, 7, 3)
+            fruit_veg_portions_day = st.slider("Porciones frutas/verduras/día", 0, 12, 5)
+            
+            # Botón de evaluación
+            evaluate_button = st.form_submit_button("🔍 Evaluar Riesgo (Manual)", type="primary")
+            
+            if evaluate_button:
+                user_data = {
+                    "age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg,
+                    "waist_cm": waist_cm, "sleep_hours": sleep_hours, "smokes_cig_day": smokes_cig_day,
+                    "days_mvpa_week": days_mvpa_week, "fruit_veg_portions_day": fruit_veg_portions_day
+                }
 
-    # Estilo de vida
-    st.subheader("Estilo de Vida")
-    sleep_hours = st.slider("Horas de sueño/día", 3, 12, 7)
-    smokes_cig_day = st.number_input("Cigarrillos/día", min_value=0, max_value=60, value=0)
-    days_mvpa_week = st.slider("Días de ejercicio/semana", 0, 7, 3)
-    fruit_veg_portions_day = st.slider("Porciones frutas/verduras/día", 0, 12, 5)
+    elif input_method == "Descripción con Texto":
+        with st.form("text_form"):
+            st.subheader("Describe tu perfil")
+            text_input = st.text_area(
+                "Escribe un texto con tus datos (edad, sexo, altura, peso, cintura, etc.)",
+                height=200,
+                placeholder="Ej: Soy un hombre de 50 años, mido 1.75m y peso 85kg. Mi cintura es de 102cm y duermo unas 6 horas."
+            )
+            evaluate_button = st.form_submit_button("🔍 Evaluar Riesgo (Texto)", type="primary")
+            
+            if evaluate_button and text_input:
+                with st.spinner("Interpretando tu descripción..."):
+                    try:
+                        response = requests.post(f"{API_URL}/extract-profile", json={"text": text_input})
+                        if response.status_code == 200:
+                            user_data = response.json()
+                            st.success("Perfil extraído con éxito.")
+                        else:
+                            st.error(f"Error al extraer perfil: {response.json().get('detail', 'Error desconocido')}")
+                            evaluate_button = False # No continuar si falla
+                    except Exception as e:
+                        st.error(f"Error de conexión al extraer perfil: {e}")
+                        evaluate_button = False # No continuar si falla
 
-    # Botón de evaluación
-    evaluate_button = st.button("🔍 Evaluar Riesgo", type="primary")
+# Inicializar el estado de la sesión si no existe
+if 'prediction_result' not in st.session_state:
+    st.session_state.prediction_result = None
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = None
+if 'plan_data' not in st.session_state:
+    st.session_state.plan_data = None
 
 # Main area
 if evaluate_button:
-    # Preparar datos
-    user_data = {
-        "age": age,
-        "sex": sex,
-        "height_cm": height_cm,
-        "weight_kg": weight_kg,
-        "waist_cm": waist_cm,
-        "sleep_hours": sleep_hours,
-        "smokes_cig_day": smokes_cig_day,
-        "days_mvpa_week": days_mvpa_week,
-        "fruit_veg_portions_day": fruit_veg_portions_day
-    }
-
     # Llamar a API de predicción
     with st.spinner("Analizando tu perfil..."):
         try:
@@ -74,6 +112,20 @@ if evaluate_button:
 
             if response.status_code == 200:
                 result = response.json()
+                # Guardar el resultado en el estado de la sesión
+                # Asegurarse de que user_data tenga todos los campos opcionales
+                full_user_data = {
+                    "age": user_data.get("age"), "sex": user_data.get("sex"), 
+                    "height_cm": user_data.get("height_cm"), "weight_kg": user_data.get("weight_kg"),
+                    "waist_cm": user_data.get("waist_cm"), "sleep_hours": user_data.get("sleep_hours"),
+                    "smokes_cig_day": user_data.get("smokes_cig_day"), 
+                    "days_mvpa_week": user_data.get("days_mvpa_week"),
+                    "fruit_veg_portions_day": user_data.get("fruit_veg_portions_day")
+                }
+                st.session_state.user_data = full_user_data
+                st.session_state.user_data = user_data
+                st.session_state.prediction_result = result
+                st.session_state.plan_data = None # Limpiar plan anterior
 
                 # Mostrar resultado
                 col1, col2, col3 = st.columns(3)
@@ -110,37 +162,42 @@ if evaluate_button:
 
                 drivers_df = pd.DataFrame(result['drivers'])
                 st.dataframe(drivers_df, use_container_width=True)
-
-                # Generar plan personalizado
-                if st.button("📝 Generar Plan Personalizado"):
-                    with st.spinner("Creando tu plan..."):
-                        coach_request = {
-                            "user_profile": user_data,
-                            "risk_score": risk_score,
-                            "top_drivers": [d['feature'] for d in result['drivers'][:3]]
-                        }
-
-                        coach_response = requests.post(f"{API_URL}/coach", json=coach_request)
-
-                        if coach_response.status_code == 200:
-                            plan_data = coach_response.json()
-
-                            st.subheader("📋 Tu Plan de Bienestar Personalizado")
-                            st.markdown(plan_data['plan'])
-
-                            st.caption(f"📚 Fuentes: {', '.join(plan_data['sources'])}")
-
-                            # Botón de descarga PDF
-                            if st.button("⬇️ Descargar PDF"):
-                                st.success("PDF generado! (implementar función de generación)")
-                        else:
-                            st.error(f"Error generando plan: {coach_response.status_code}")
             else:
                 st.error(f"Error en predicción: {response.status_code}")
+                st.session_state.user_data = None
+                st.session_state.prediction_result = None
 
         except Exception as e:
             st.error(f"Error conectando con la API: {e}")
             st.info("Asegúrate de que la API esté corriendo en http://localhost:8000")
+            st.session_state.user_data = None
+            st.session_state.prediction_result = None
+
+# Mostrar resultados y botón de plan si hay una predicción guardada
+if st.session_state.prediction_result:
+    if st.button("📝 Generar Plan Personalizado"):
+        with st.spinner("Creando tu plan..."):
+            result = st.session_state.prediction_result
+            # Usar los datos guardados en la sesión
+            coach_request = { "user_profile": st.session_state.user_data, "risk_score": result['score'], "top_drivers": [d['feature'] for d in result['drivers'][:3]] }
+
+            coach_response = requests.post(f"{API_URL}/coach", json=coach_request)
+            
+            if coach_response.status_code == 200:
+                st.session_state.plan_data = coach_response.json()
+            else:
+                st.error(f"Error generando plan: {coach_response.status_code}")
+                st.session_state.plan_data = None
+
+    # Mostrar el plan si ya fue generado
+    if st.session_state.plan_data:
+        st.subheader("📋 Tu Plan de Bienestar Personalizado")
+        st.markdown(st.session_state.plan_data['plan'])
+        st.caption(f"📚 Fuentes: {', '.join(st.session_state.plan_data['sources'])}")
+        
+        # Botón de descarga PDF
+        if st.button("⬇️ Descargar PDF"):
+            st.success("PDF generado! (implementar función de generación)")
 
 # Footer
 st.markdown("---")

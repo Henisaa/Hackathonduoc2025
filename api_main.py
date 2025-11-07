@@ -7,6 +7,9 @@ import pandas as pd
 import json
 from pathlib import Path
 
+
+#para inicializar la api, ejecutar: uvicorn api_main:app --reload
+
 # Inicializar FastAPI
 app = FastAPI(
     title="Coach de Bienestar Preventivo",
@@ -30,6 +33,9 @@ class UserProfile(BaseModel):
     smokes_cig_day: Optional[int] = Field(None, ge=0, le=60)
     days_mvpa_week: Optional[int] = Field(None, ge=0, le=7)
     fruit_veg_portions_day: Optional[float] = Field(None, ge=0, le=12)
+
+class TextRequest(BaseModel):
+    text: str = Field(..., min_length=10)
 
 class RiskResponse(BaseModel):
     score: float
@@ -124,31 +130,40 @@ def predict_risk(profile: UserProfile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/extract-profile", response_model=UserProfile)
+def extract_profile_from_text(request: TextRequest):
+    """
+    Extrae el perfil de usuario desde texto libre.
+    """
+    try:
+        from rag_module import extract_user_data_from_text
+        user_data = extract_user_data_from_text(request.text)
+        return UserProfile(**user_data)
+    except ValueError as e:
+        # Error si faltan campos requeridos
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en el servidor de IA: {e}")
+
 @app.post("/coach", response_model=CoachResponse)
 def generate_coach_plan(request: CoachRequest):
     """
     Endpoint de generación de plan personalizado con RAG.
-
-    NOTA: Requiere integración con función generate_personalized_plan()
     """
     try:
-        # Aquí iría la llamada a generate_personalized_plan()
-        # Por ahora retornamos un placeholder
-
-        plan_text = f"""Plan personalizado de 2 semanas para mejorar tu salud.
-
-Basado en tu perfil (edad {request.user_profile.age}, riesgo {request.risk_score:.1%}),
-te recomendamos enfocarte en: {', '.join(request.top_drivers)}.
-
-DISCLAIMER: Este plan NO es un diagnóstico médico. Consulta con un profesional de salud."""
-
-        return CoachResponse(
-            plan=plan_text,
-            sources=["nutricion.md", "actividad_fisica.md"]
+        # Importar la función aquí para asegurar que el RAG se inicialice una vez
+        from rag_module import generate_personalized_plan
+        
+        # Llamar a la función real del módulo RAG
+        plan_data = generate_personalized_plan(
+            user_data=request.user_profile.dict(),
+            risk_score=request.risk_score,
+            top_drivers=request.top_drivers
         )
-
+        return CoachResponse(plan=plan_data['plan'], sources=plan_data['sources'])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
