@@ -1,5 +1,5 @@
 // lib/features/dashboard/widgets/history_list_widget.dart
-import 'package.flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_application_1/core/models/app_models.dart';
 

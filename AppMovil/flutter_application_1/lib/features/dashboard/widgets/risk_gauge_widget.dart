@@ -10,43 +10,53 @@ class RiskGaugeWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final scorePercent = (riskData.score * 100).round();
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Riesgo Cardiometabólico", style: theme.textTheme.titleLarge),
+            Text(
+              'Riesgo cardiometabólico',
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
-            // Avatar de corazón (no incluido, pero iría aquí)
-            
-            // Gauge
             SizedBox(
-              width: 200,
-              height: 100,
+              height: 160,
               child: CustomPaint(
-                painter: _GaugePainter(
-                  score: riskData.score,
-                  backgroundColor: theme.colorScheme.surfaceVariant,
-                ),
+                painter: _GaugePainter(score: riskData.score),
                 child: Center(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "${(riskData.score * 100).round()}%",
-                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                        '$scorePercent%',
+                        style: theme.textTheme.headlineMedium,
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         riskData.label,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        style: theme.textTheme.bodyMedium,
                       ),
-                      const SizedBox(height: 10), // Ajuste para el arco
                     ],
                   ),
                 ),
               ),
-            )
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: riskData.riskFactors
+                  .map(
+                    (f) => Chip(
+                      label: Text(f),
+                    ),
+                  )
+                  .toList(),
+            ),
           ],
         ),
       ),
@@ -56,36 +66,51 @@ class RiskGaugeWidget extends StatelessWidget {
 
 class _GaugePainter extends CustomPainter {
   final double score;
-  final Color backgroundColor;
+  _GaugePainter({required this.score});
 
-  _GaugePainter({required this.score, required this.backgroundColor});
-  
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height);
-    final rect = Rect.fromCenter(center: center, width: size.width, height: size.height * 2);
+    final radius = size.width / 2 - 16;
 
     final backgroundPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 20;
-
-    // Arco de fondo
-    canvas.drawArc(rect, math.pi, math.pi, false, backgroundPaint);
-    
-    // Arco de score
-    final scorePaint = Paint()
-      ..shader = const SweepGradient(
-        startAngle: math.pi,
-        endAngle: 2 * math.pi,
-        colors: [Colors.green, Colors.yellow, Colors.red],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(rect)
+      ..color = Colors.grey.shade300
       ..style = PaintingStyle.stroke
       ..strokeWidth = 20
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawArc(rect, math.pi, math.pi * score.clamp(0.0, 1.0), false, scorePaint);
+    // Semicírculo base
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi,
+      false,
+      backgroundPaint,
+    );
+
+    // Gradiente de color según score
+    final gradient = SweepGradient(
+      startAngle: math.pi,
+      endAngle: 2 * math.pi,
+      colors: const [Colors.green, Colors.yellow, Colors.red],
+      stops: const [0.0, 0.5, 1.0],
+    );
+
+    final scorePaint = Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: radius),
+      )
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 20
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi * score.clamp(0.0, 1.0),
+      false,
+      scorePaint,
+    );
   }
 
   @override

@@ -2,9 +2,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Define un color base (azul, como en tu app)
-  static final _baseSeedColor = Colors.blue.shade700;
+  // Color base para generar el esquema
+  static const Color _baseSeedColor = Color(0xFF1D4ED8); // azul tipo shade 700
 
+  // Tema claro
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -12,20 +13,21 @@ class AppTheme {
       seedColor: _baseSeedColor,
       brightness: Brightness.light,
     ),
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.grey.shade50,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFFF9FAFB), // gris muy claro
       elevation: 0,
     ),
-    scaffoldBackgroundColor: Colors.grey.shade100, // bg-gray-100
-    cardTheme: CardTheme(
+    scaffoldBackgroundColor: const Color(0xFFF3F4F6), // bg-gray-100
+    cardTheme: const CardTheme(
       elevation: 1,
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
     ),
   );
 
+  // Tema oscuro
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -34,12 +36,12 @@ class AppTheme {
       brightness: Brightness.dark,
     ),
     scaffoldBackgroundColor: const Color(0xFF111827), // bg-gray-900
-    cardTheme: CardTheme(
+    cardTheme: const CardTheme(
       elevation: 1,
-      color: const Color(0xFF1f2937), // bg-gray-800
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      color: Color(0xFF1F2937), // bg-gray-800
+      margin: EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
     ),
   );

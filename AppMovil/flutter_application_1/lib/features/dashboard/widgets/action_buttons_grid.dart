@@ -1,85 +1,95 @@
-// lib/features/dashboard/widgets/action_plan_widget.dart
+// lib/features/dashboard/widgets/action_buttons_grid.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/core/models/app_models.dart';
 
-class ActionPlanWidget extends StatelessWidget {
-  final bool isLoading;
-  final List<ActionPlanGoal> goals;
-  final Map<String, bool> goalsMet;
-  final Function(String, bool) onCheck;
+class ActionButtonsGrid extends StatelessWidget {
+  final VoidCallback onLogMeal;
+  final VoidCallback onLogActivity;
+  final VoidCallback onOpenChat;
+  final VoidCallback onShowRecommendations;
 
-  const ActionPlanWidget({
+  const ActionButtonsGrid({
     super.key,
-    required this.isLoading,
-    required this.goals,
-    required this.goalsMet,
-    required this.onCheck,
+    required this.onLogMeal,
+    required this.onLogActivity,
+    required this.onOpenChat,
+    required this.onShowRecommendations,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Tu Plan de Acción (2 Semanas)",
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            if (isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(width: 16),
-                      Text("Generando tu plan..."),
-                    ],
-                  ),
-                ),
-              )
-            else if (goals.isEmpty)
-              const Text("No se pudo generar un plan. Intenta más tarde.")
-            else
-              // Genera la lista de Checkbox
-              Column(
-                children: List.generate(goals.length, (index) {
-                  final item = goals[index];
-                  final goalId = 'goal_$index';
-                  final isChecked = goalsMet[goalId] ?? false;
-
-                  return CheckboxListTile(
-                    title: Text(
-                      item.goal,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        decoration: isChecked ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                    subtitle: Text(
-                      item.details,
-                      style: TextStyle(
-                        decoration: isChecked ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                    value: isChecked,
-                    onChanged: (bool? value) {
-                      onCheck(goalId, value ?? false);
-                    },
-                    controlAffinity: ListTileControlAffinity.leading,
-                    activeColor: theme.primaryColor,
-                  );
-                }),
-              ),
-          ],
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      shrinkWrap: true, // Para que quepa dentro del ListView
+      physics: const NeverScrollableScrollPhysics(), // Desactiva scroll
+      children: [
+        _ActionButton(
+          text: "Analizar Producto",
+          icon: Icons.camera_alt,
+          color: Colors.green,
+          onPressed: onLogMeal,
         ),
+        _ActionButton(
+          text: "Registrar Actividad",
+          icon: Icons.directions_run,
+          color: Colors.purple,
+          onPressed: onLogActivity,
+        ),
+        _ActionButton(
+          text: "Chat Asistente",
+          icon: Icons.chat,
+          color: Colors.blue,
+          onPressed: onOpenChat,
+        ),
+        _ActionButton(
+          text: "Recomendaciones",
+          icon: Icons.lightbulb,
+          color: Colors.orange,
+          onPressed: onShowRecommendations,
+        ),
+      ],
+    );
+  }
+}
+
+// Widget interno para estilizar los botones
+class _ActionButton extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _ActionButton({
+    required this.text,
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 36),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
