@@ -1,0 +1,7 @@
+{
+  "name": "Oficial AsistenteSalud 2.0",
+  "description": "Una aplicación de asistente de salud impulsada por IA que ayuda a los usuarios a realizar un seguimiento y mejorar su salud cardiometabólica. Calcula el riesgo, genera planes de acción personalizados, analiza las comidas a través de fotos y ofrece un chatbot de apoyo.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
