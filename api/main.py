@@ -1,9 +1,11 @@
 # ===============================================================
-# API: Coach de Bienestar Preventivo (FastAPI)
+# API + FRONTEND: Coach de Bienestar Preventivo (FastAPI + React)
 # ===============================================================
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import joblib
@@ -23,10 +25,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ Permitir conexión desde React (puerto 3000)
+# ✅ Permitir conexión desde cualquier origen (React o cliente)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # puedes reemplazar con ["http://localhost:3000"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -75,19 +77,18 @@ class CoachResponse(BaseModel):
 # ---------------------------------------------------------------
 # 3. ENDPOINTS BÁSICOS
 # ---------------------------------------------------------------
-@app.get("/")
-def read_root():
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "model_loaded": model is not None}
+
+
+@app.get("/api")
+def api_info():
     return {
         "message": "Bienvenido a la API del Coach de Bienestar Preventivo",
         "version": "1.0.0",
         "endpoints": ["/predict", "/coach", "/health"]
     }
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "model_loaded": model is not None}
-
 
 # ---------------------------------------------------------------
 # 4. ENDPOINT: PREDICCIÓN DE RIESGO
@@ -138,15 +139,11 @@ def predict_risk(profile: UserProfile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # ---------------------------------------------------------------
 # 5. ENDPOINT: PLAN PERSONALIZADO (RAG + OpenAI)
 # ---------------------------------------------------------------
 @app.post("/coach", response_model=CoachResponse)
 def generate_coach_plan(request: CoachRequest):
-    """
-    Endpoint real del Coach — usa RAG + OpenAI desde coach_rag.py
-    """
     try:
         plan_data = generate_personalized_plan(
             user_data=request.user_profile.dict(),
@@ -164,7 +161,22 @@ def generate_coach_plan(request: CoachRequest):
 
 
 # ---------------------------------------------------------------
-# 6. SERVIDOR LOCAL
+# 6. SERVIR FRONTEND REACT (dist/)
+# ---------------------------------------------------------------
+frontend_path = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
+
+    @app.get("/{full_path:path}")
+    def serve_react_app(full_path: str):
+        index_file = frontend_path / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"error": "Archivo no encontrado"}
+
+# ---------------------------------------------------------------
+# 7. SERVIDOR LOCAL
 # ---------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
