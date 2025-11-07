@@ -3,12 +3,16 @@
 # ===============================================================
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import joblib
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+# 🧠 Importar el generador de planes reales (usa RAG + OpenAI)
+from coach_rag import generate_personalized_plan
 
 # ---------------------------------------------------------------
 # 1. CONFIGURACIÓN INICIAL
@@ -17,6 +21,15 @@ app = FastAPI(
     title="Coach de Bienestar Preventivo",
     description="API para estimación de riesgo cardiometabólico y coaching personalizado",
     version="1.0.0"
+)
+
+# ✅ Permitir conexión desde React (puerto 3000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # puedes reemplazar con ["http://localhost:3000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Cargar modelo entrenado (asegúrate de que existe en /models)
@@ -81,11 +94,7 @@ def health_check():
 # ---------------------------------------------------------------
 @app.post("/predict", response_model=RiskResponse)
 def predict_risk(profile: UserProfile):
-    """
-    Endpoint de predicción de riesgo cardiometabólico.
-    """
     try:
-        # --- Construcción de features (idénticas al entrenamiento) ---
         features = {
             "age": profile.age,
             "age_squared": profile.age ** 2,
@@ -105,17 +114,11 @@ def predict_risk(profile: UserProfile):
         }
 
         X = pd.DataFrame([features])
-
-        # --- Reordenar columnas para que coincidan con el modelo ---
         if hasattr(model, "feature_names_in_"):
             X = X[model.feature_names_in_]
-        else:
-            print("⚠️ El modelo no tiene atributo feature_names_in_, se usará orden actual")
 
-        # --- Predicción ---
         risk_score = float(model.predict_proba(X)[0, 1])
 
-        # --- Clasificación de riesgo ---
         if risk_score < 0.3:
             risk_level = "Bajo"
             recommendation = "Mantener hábitos saludables"
@@ -137,40 +140,27 @@ def predict_risk(profile: UserProfile):
 
 
 # ---------------------------------------------------------------
-# 5. ENDPOINT: PLAN PERSONALIZADO (FASE COACH)
+# 5. ENDPOINT: PLAN PERSONALIZADO (RAG + OpenAI)
 # ---------------------------------------------------------------
 @app.post("/coach", response_model=CoachResponse)
 def generate_coach_plan(request: CoachRequest):
     """
-    Endpoint de generación de plan personalizado (FASE RAG futura).
+    Endpoint real del Coach — usa RAG + OpenAI desde coach_rag.py
     """
     try:
-        plan_text = f"""
-        Plan personalizado de 2 semanas para mejorar tu bienestar.
-        
-        Basado en tu perfil (edad {request.user_profile.age} años, riesgo estimado {request.risk_score:.1%}),
-        las áreas prioritarias son: {', '.join(request.top_drivers)}.
-        
-        Semana 1:
-        - Ajusta tus hábitos diarios.
-        - Registra tu actividad física y sueño.
-        - Mejora la alimentación con frutas y verduras.
-        
-        Semana 2:
-        - Incrementa gradualmente la actividad física.
-        - Reduce cigarrillos si fumas.
-        - Mantén un horario de sueño regular.
-        
-        DISCLAIMER: Este plan NO es un diagnóstico médico. Consulta con un profesional de salud.
-        """
+        plan_data = generate_personalized_plan(
+            user_data=request.user_profile.dict(),
+            risk_score=request.risk_score,
+            top_drivers=request.top_drivers
+        )
 
         return CoachResponse(
-            plan=plan_text.strip(),
-            sources=["nutricion.md", "actividad_fisica.md", "sueño.md"]
+            plan=plan_data.get("plan", "No se generó plan."),
+            sources=plan_data.get("sources", [])
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error en coach: {str(e)}")
 
 
 # ---------------------------------------------------------------
