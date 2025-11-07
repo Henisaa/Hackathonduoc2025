@@ -125,41 +125,44 @@ JSON:"""
 def generate_personalized_plan(user_data: dict, risk_score: float, top_drivers: list) -> dict:
     """
     Genera plan personalizado usando OpenAI + RAG.
-    
-    Args:
-        user_data: Datos del usuario extraídos
-        risk_score: Puntaje de riesgo (0-1)
-        top_drivers: Lista de principales factores de riesgo
-    
-    Returns:
-        dict con plan de acción
     """
-    
     # 1. Identificar áreas prioritarias
     priority_areas = []
-    
-    if user_data.get('smokes_cig_day', 0) > 0:
-        priority_areas.append('cesación tabaquismo')
-    
-    if user_data.get('sleep_hours', 8) < 7:
+
+    # Normalizar valores nulos
+    sleep_hours = user_data.get('sleep_hours') or 8
+    smokes_cig_day = user_data.get('smokes_cig_day') or 0
+    days_mvpa_week = user_data.get('days_mvpa_week') or 5
+    fruit_veg_portions_day = user_data.get('fruit_veg_portions_day') or 5
+
+    # Comparaciones seguras
+    if smokes_cig_day > 0:
+        priority_areas.append('cesación del tabaquismo')
+
+    if sleep_hours < 7:
         priority_areas.append('mejora del sueño')
-    
-    if user_data.get('days_mvpa_week', 5) < 3:
-        priority_areas.append('aumento actividad física')
-    
-    if user_data.get('fruit_veg_portions_day', 5) < 5:
-        priority_areas.append('mejora alimentación')
-    
+
+    if days_mvpa_week < 3:
+        priority_areas.append('aumento de actividad física')
+
+    if fruit_veg_portions_day < 5:
+        priority_areas.append('mejora de alimentación')
+
     # 2. Buscar conocimiento relevante
-    rag_query = f"recomendaciones para {', '.join(priority_areas)}"
+    rag_query = f"recomendaciones para {', '.join(priority_areas) or 'estilo de vida saludable'}"
     relevant_docs = rag.search(rag_query, top_k=3)
-    
+
+    # Si no hay documentos relevantes, usa todos
+    if not relevant_docs:
+        relevant_docs = [{'filename': name, 'content': content, 'score': 0.0}
+                         for name, content in zip(rag.doc_names, rag.documents)]
+
     # 3. Construir contexto para OpenAI
     context = "\n\n".join([
-        f"=== {doc['filename']} ===\n{doc['content']}" 
+        f"=== {doc['filename']} ===\n{doc['content']}"
         for doc in relevant_docs
     ])
-    
+
     # 4. Prompt para OpenAI
     prompt = f"""Eres un coach de bienestar preventivo. Genera un plan personalizado de 2 semanas.
 
@@ -188,7 +191,7 @@ FORMATO:
 {{"plan": "texto del plan", "sources": ["archivo1.md", "archivo2.md"]}}
 
 JSON:"""
-    
+
     # 5. Llamar a OpenAI
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -196,27 +199,28 @@ JSON:"""
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}
     )
-    
+
     response_text = response.choices[0].message.content.strip()
-    
+
     # Limpiar markdown
     if response_text.startswith('```'):
         response_text = response_text.split('```')[1]
         if response_text.startswith('json'):
             response_text = response_text[4:]
         response_text = response_text.strip()
-    
+
     plan_data = json.loads(response_text)
-    
-    # 6. Validar que se usaron fuentes reales
+
+    # 6. Validar fuentes
     cited_sources = plan_data.get('sources', [])
     valid_sources = [doc['filename'] for doc in relevant_docs]
-    
+
     for source in cited_sources:
         if source not in valid_sources:
             print(f"⚠️ Fuente potencialmente alucinada: {source}")
-    
+
     return plan_data
+
 
 # Bloque de prueba: solo se ejecuta si corres "python rag_module.py"
 if __name__ == "__main__":

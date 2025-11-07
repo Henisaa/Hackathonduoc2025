@@ -1,3 +1,10 @@
+
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent))
+
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -5,7 +12,8 @@ import joblib
 import numpy as np
 import pandas as pd
 import json
-from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent))
 
 
 #para inicializar la api, ejecutar: uvicorn api_main:app --reload

@@ -123,7 +123,6 @@ if evaluate_button:
                     "fruit_veg_portions_day": user_data.get("fruit_veg_portions_day")
                 }
                 st.session_state.user_data = full_user_data
-                st.session_state.user_data = user_data
                 st.session_state.prediction_result = result
                 st.session_state.plan_data = None # Limpiar plan anterior
 
@@ -179,7 +178,7 @@ if st.session_state.prediction_result:
         with st.spinner("Creando tu plan..."):
             result = st.session_state.prediction_result
             # Usar los datos guardados en la sesión
-            coach_request = { "user_profile": st.session_state.user_data, "risk_score": result['score'], "top_drivers": [d['feature'] for d in result['drivers'][:3]] }
+            coach_request = { "user_profile": st.session_state.user_data, "risk_score": result['score'], "top_drivers": [d['feature'] for d in result.get('drivers', [])[:3]] }
 
             coach_response = requests.post(f"{API_URL}/coach", json=coach_request)
             
